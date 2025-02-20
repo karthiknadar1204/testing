@@ -158,3 +158,31 @@ sudo certbot --nginx -d <your-domain>
 
 
 
+
+
+
+
+
+``` sh
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Clone-step 1') {
+            steps {
+                git branch: 'main', url: 'https://github.com/karthiknadar1204/testing.git'
+            }
+        }
+        stage('delete from dir content step-2') {
+            steps {
+                sh 'rm -rf /var/www/html/*'
+            }
+        }
+        stage('copy to html directory step-3') {
+            steps {
+                sh 'cp -r ./* /var/www/html/'
+            }
+        }
+    }
+}
+```
