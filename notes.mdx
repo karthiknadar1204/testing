@@ -1,0 +1,160 @@
+---
+title: "End-to-End Guide: Hosting a Website on Ubuntu with Nginx, Certbot SSL, and Jenkins"
+description: "A step-by-step walkthrough of installing Nginx, configuring Certbot for SSL, and setting up Jenkins on an Ubuntu server."
+---
+
+# End-to-End Guide: Hosting a Website on Ubuntu with Nginx, Certbot SSL, and Jenkins
+
+Below is a compiled sequence of commands and brief explanations showing how to:
+
+1. **SSH into your Ubuntu server using a private key**  
+2. **Install and configure Nginx**  
+3. **Install Java/OpenJDK**  
+4. **Install and configure Jenkins**  
+5. **Secure your domain with Let's Encrypt (Certbot)**  
+
+> **Note:** Replace paths, usernames, IP addresses, and domain names with your own as needed.
+
+---
+
+## 1. SSH into the Server
+
+### Make the private key secure
+
+```bash
+chmod 600 /Users/karthiknadar/Downloads/website-responsive-key.pem
+```
+
+Ensures only the owner (chmod 600) can read the key file. This is required by SSH to use the key securely.
+
+### SSH with the private key
+
+```bash
+ssh -i /Users/karthiknadar/Downloads/website-responsive-key.pem ubuntu@<instance-public_ip>
+```
+
+## 2. Update and Switch to root
+
+Once you are logged in, update your package list and switch to the root user if preferred.
+
+```bash
+sudo apt update
+sudo su
+```
+
+- `sudo apt update` refreshes the list of available packages.
+- `sudo su` switches to root. (Alternatively, you can continue using sudo before each command.)
+
+## 3. Install and Configure Nginx
+
+### Install Nginx
+
+```bash
+apt install nginx
+```
+
+### Check Nginx Status
+
+```bash
+systemctl status nginx
+```
+
+Verifies that Nginx is active (running). If it's not running, you can start it:
+
+```bash
+systemctl start nginx
+```
+
+### Directory Structure
+
+```bash
+cd /var/www/
+ls
+```
+
+**By default, Nginx serves content from `/var/www/html/`.**
+
+## 4. Install Java / OpenJDK
+
+If you need Java on your server—for example, to run Jenkins—install OpenJDK:
+
+```bash
+sudo apt update
+sudo apt install fontconfig openjdk-17-jre
+java -version
+```
+
+Installs OpenJDK 17 and checks the installed version.
+
+## 5. Install Jenkins
+
+### Add Jenkins Repository and Key
+
+```bash
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+https://pkg.jenkins.io/debian-stable binary/" | sudo tee \
+/etc/apt/sources.list.d/jenkins.list > /dev/null
+```
+
+### Install and Start Jenkins
+
+```bash
+sudo apt-get update
+sudo apt-get install jenkins
+sudo systemctl start jenkins
+sudo systemctl status jenkins
+```
+
+Installs Jenkins on your Ubuntu server, starts it, and verifies it is running.
+
+### Retrieve Initial Admin Password
+
+```bash
+cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+Copy this password and paste it into the Jenkins UI when you first access Jenkins at `http://<your_server_ip_or_domain>:8080`.
+
+## 6. Adjust Permissions for Nginx Web Root (Optional)
+
+If you want Jenkins or another user to manage the website files in `/var/www/html/`:
+
+```bash
+sudo chown -R jenkins:jenkins /var/www/html
+```
+
+Gives ownership of `/var/www/html` to the jenkins user and group.
+
+## 7. Install Certbot for HTTPS (Let's Encrypt)
+
+To secure your domain with HTTPS, you'll use Certbot (from Let's Encrypt). Make sure your DNS (A record) points to the IP of your server.
+
+### Install Certbot with Nginx Plugin
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+```
+
+Installs Certbot and the Nginx plugin, which helps with automatic certificate generation and renewal.
+
+### Obtain an SSL Certificate
+
+```bash
+sudo certbot --nginx -d <your-domain>
+```
+
+- `-d <your-domain>`: Replace `<your-domain>` with your own domain.
+- Follow on-screen instructions to enter your email, agree to terms, and allow Certbot to configure HTTPS.
+- **Important**: Your domain's DNS must resolve to this server before this works.
+
+If the first attempt fails, ensure your DNS is correctly pointing to the server. Then, try again:
+
+```bash
+sudo certbot --nginx -d <your-domain>
+```
+
+
+
