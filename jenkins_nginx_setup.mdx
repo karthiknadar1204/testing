@@ -1,0 +1,223 @@
+---
+title: "DevOps Pipeline: AWS EC2, Jenkins, Nginx Deployment"
+description: "Step-by-step guide to setting up an AWS EC2 instance, installing Jenkins, Nginx, and automating deployments."
+---
+
+import { CodeBlock } from 'some-react-library'
+
+# DevOps 1 Pipeline: AWS EC2, Jenkins, Nginx Deployment
+
+## 1. Create an EC2 Instance on AWS
+
+- Go to AWS Management Console.
+- Navigate to **EC2** and launch an instance with the required configuration.
+- Go to **Elastic IPs** from the left panel.
+- Click on **Allocate Elastic IP** and then on **Allocate**.
+- Select the allocated IP and **Associate** it with the EC2 instance.
+
+## 2. Connect to EC2 Instance via SSH
+
+Open the terminal and run:
+
+```bash
+ssh ubuntu@<public_ipv4_address>
+```
+
+If you get a permission error, modify the permissions for the key file:
+
+```bash
+chmod 600 <path_to_.pem_file>
+ssh -i <path_to_.pem_file> ubuntu@<public_ipv4_address>
+```
+
+Now you are successfully connected to the EC2 instance.
+
+## 3. Update and Install Required Packages
+
+```bash
+sudo apt update
+```
+
+## 4. Install Java and Jenkins
+
+### Java Installation
+
+```bash
+sudo apt update
+sudo apt install fontconfig openjdk-17-jre
+java -version
+```
+
+Expected output:
+
+```bash
+openjdk version "17.0.13" 2024-10-15
+OpenJDK Runtime Environment (build 17.0.13+11-Debian-2)
+OpenJDK 64-Bit Server VM (build 17.0.13+11-Debian-2, mixed mode, sharing)
+```
+
+### Jenkins Installation
+
+```bash
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+https://pkg.jenkins.io/debian-stable binary/" | sudo tee \
+/etc/apt/sources.list.d/jenkins.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install jenkins
+```
+
+Enable and start Jenkins:
+
+```bash
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+```
+
+Check Jenkins status:
+
+```bash
+sudo systemctl status jenkins
+```
+
+## 5. Configure AWS Security Groups for Jenkins
+
+- In AWS Console, select your instance.
+- Go to **Security** -> **Security Groups** -> **Edit Inbound Rules**.
+- Add a new rule:
+  - **Type:** Custom TCP
+  - **Port:** 8080
+  - **Source:** 0.0.0.0/0
+- Save the rules.
+
+## 6. Access Jenkins Dashboard
+
+Open your browser and navigate to:
+
+```plaintext
+http://<public_ipv4_address>:8080
+```
+
+Retrieve the Jenkins admin password:
+
+```bash
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+## 7. Check Open Ports
+
+```bash
+netstat -tuln -p
+```
+
+## 8. Install Node.js & NPM
+
+Follow the instructions from:
+
+[NodeSource Distributions](https://github.com/nodesource/distributions?tab=readme-ov-file#ubuntu-versions)
+
+## 9. Configure Jenkins Job
+
+- Go to **Jenkins Dashboard** -> **New Item**.
+- Enter a name and select **Freestyle Project** -> **Create**.
+- In **Source Code Management**, select **Git** and add the repository URL.
+- Click **Save** and **Build Now**.
+- After a successful build, check **Console Output** to find the repo contents' storage location.
+
+## 10. Install Nginx
+
+```bash
+sudo apt install nginx
+sudo service nginx start
+sudo systemctl enable nginx
+```
+
+## 11. Configure AWS Security Groups for HTTP/HTTPS
+
+- Go to **AWS Console** -> **Security Groups**.
+- Edit inbound rules and add:
+  - **Type:** HTTP (Port 80)
+  - **Type:** HTTPS (Port 443)
+  
+Now, accessing `<public_ip_address>` should show the Nginx welcome page.
+
+## 12. Deploy Jenkins Build to Nginx Directory
+
+Navigate to `/var/www/` and create a new directory:
+
+```bash
+cd /var/www
+sudo mkdir nodeapp
+```
+
+### Update Jenkins Build Configuration
+
+- In **Jenkins Dashboard**, go to **Configure**.
+- In **Build Steps**, add the command:
+
+```bash
+cp -r * /var/www/nodeapp
+```
+
+- Save and build. The build may fail due to permissions.
+
+### Fix Permissions
+
+```bash
+sudo chown -R jenkins:jenkins /var/www/nodeapp
+```
+
+- Build again. If successful, update the build step command:
+
+```bash
+cp -r ./* /var/www/nodeapp
+```
+
+---
+
+# Jenkins Pipeline Script
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Clone-step 1') {
+            steps {
+                git branch: 'main', url: 'https://github.com/karthiknadar1204/testing.git'
+            }
+        }
+        stage('Delete Existing Content-step 2') {
+            steps {
+                sh 'rm -rf /var/www/html/*'
+            }
+        }
+        stage('Copy to HTML Directory-step 3') {
+            steps {
+                sh 'cp -r ./* /var/www/html/'
+            }
+        }
+    }
+}
+```
+
+---
+
+## Final Verification
+
+1. Check Nginx status:
+
+```bash
+sudo systemctl status nginx
+```
+
+2. Access the deployed website by visiting:
+
+```plaintext
+http://<public_ipv4_address>
+```
+
+Everything should be running smoothly now! 🎉
